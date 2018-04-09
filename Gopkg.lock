@@ -4,8 +4,8 @@
 [[projects]]
   name = "github.com/antmanler/gnatsd-jwt"
   packages = ["jwtauth"]
-  revision = "022291dbc7edba7fe0a44e577869b3c15c7030b7"
-  version = "1.1.0"
+  revision = "7e08af62fc472f44bf36dc63588df7bf72e834bd"
+  version = "1.1.1"
 
 [[projects]]
   name = "github.com/dgrijalva/jwt-go"
@@ -64,6 +64,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "1862306f8a7a92941262b2e29b8d6775724d087701ce1b280fd2ee9576f64478"
+  inputs-digest = "aca006993fe3679169ffe9cff88248ba07d25b17b62e1d544a71833012ac0252"
   solver-name = "gps-cdcl"
   solver-version = 1

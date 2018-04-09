@@ -27,25 +27,48 @@ type credSyncer struct {
 // static assert
 var _ server.Authentication = (*refuncAuth)(nil)
 
-func (auth *refuncAuth) Check(c server.ClientAuthentication) bool {
+func (auth *refuncAuth) Check(c server.ClientAuthentication) (verified bool) {
 	opts := c.GetOpts()
+	var username, password string
 	if opts.Authorization != "" {
 		if auth.tokenAuther == nil {
-			return false
+			return
 		}
-		return auth.tokenAuther.Check(c)
+		token, err := auth.tokenAuther.(*jwtauth.JWTAuth).Verify(opts.Authorization, &tokenExt{})
+		if err != nil {
+			auth.Errorf("failed to auth token, %v", err)
+			return
+		}
+		claims, ok := token.Claims.(*tokenExt)
+		if !ok {
+			return
+		}
+		if claims.AccessKeyRef == "" {
+			user := auth.tokenAuther.(*jwtauth.JWTAuth).GetUser(&claims.Token)
+			if user == nil {
+				return
+			}
+			auth.Debugf("Verified user %q by token, with perms %v", user.Username, user.Permissions != nil)
+			c.RegisterUser(user)
+			return true
+		}
+		username, password = claims.AccessKeyRef, claims.AccessKeyRef
+	} else {
+		username, password = opts.Username, opts.Password
 	}
-	if opts.Username == "" || opts.Password == "" {
-		return false
+
+	if username == "" || password == "" {
+		return
 	}
-	user, err := auth.Get(opts.Username)
+	user, err := auth.Get(username)
 	if err != nil {
-		auth.Errorf("Failed to get creds for %q, %v", opts.Username, err)
-		return false
+		auth.Errorf("Failed to get creds for %q, %v", username, err)
+		return
 	}
-	if user.Password != opts.Password {
-		return false
+	if user.Password != password {
+		return
 	}
+
 	c.RegisterUser(user)
 	auth.Debugf("Register user %q with permissions %v", user.Username, user.Permissions != nil)
 	return true
@@ -108,4 +131,13 @@ func (auth *refuncAuth) Debugf(format string, v ...interface{}) {
 	if auth.logger != nil {
 		auth.logger.Debugf(format, v...)
 	}
+}
+
+type tokenExt struct {
+	jwtauth.Token
+	AccessKeyRef string `json:"ref,omitempty"`
+}
+
+func (u tokenExt) Valid() error {
+	return u.Token.Valid()
 }
